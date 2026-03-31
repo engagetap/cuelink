@@ -8,11 +8,15 @@ on:
 jobs:
   build:
     runs-on: macos-15
+    permissions:
+      contents: write
     env:
       TAG_VERSION: ${{ github.ref_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
@@ -32,13 +36,13 @@ jobs:
       - name: Create .app bundle
         run: |
           APP="build/CueLink.app"
+          VERSION="${TAG_VERSION#v}"
           mkdir -p "$APP/Contents/MacOS"
           mkdir -p "$APP/Contents/Resources"
 
           cp "$BIN_PATH/CueLink" "$APP/Contents/MacOS/CueLink"
 
           cp CueLink/CueLink/Info.plist "$APP/Contents/"
-          VERSION="${TAG_VERSION#v}"
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$APP/Contents/Info.plist"
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" "$APP/Contents/Info.plist"
 
@@ -97,7 +101,9 @@ jobs:
             -ov \
             -format UDZO \
             "CueLink-${VERSION}.dmg"
-          echo "DMG_NAME=CueLink-${VERSION}.dmg" >> "$GITHUB_ENV"
+          DMG_FILE="CueLink-${VERSION}.dmg"
+          echo "DMG_NAME=$DMG_FILE" >> "$GITHUB_ENV"
+          echo "DMG_SIZE=$(stat -f%z "$DMG_FILE")" >> "$GITHUB_ENV"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -106,3 +112,42 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update appcast.xml
+        run: |
+          VERSION="${TAG_VERSION#v}"
+          PUB_DATE="$(date -u '+%a, %d %b %Y %H:%M:%S +0000')"
+          DMG_URL="https://github.com/engagetap/cuelink/releases/download/${TAG_VERSION}/CueLink-${VERSION}.dmg"
+
+          cat > appcast.xml << XMLEOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+              <channel>
+                  <title>CueLink Updates</title>
+                  <link>https://github.com/engagetap/cuelink/releases</link>
+                  <description>Most recent changes with links to updates.</description>
+                  <language>en</language>
+                  <item>
+                      <title>Version ${VERSION}</title>
+                      <sparkle:version>${VERSION}</sparkle:version>
+                      <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
+                      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+                      <pubDate>${PUB_DATE}</pubDate>
+                      <enclosure
+                          url="${DMG_URL}"
+                          length="${DMG_SIZE}"
+                          type="application/octet-stream"
+                      />
+                  </item>
+              </channel>
+          </rss>
+          XMLEOF
+
+          # Remove leading whitespace from heredoc
+          sed -i '' 's/^          //' appcast.xml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add appcast.xml
+          git commit -m "chore: update appcast.xml for ${TAG_VERSION}"
+          git push origin HEAD:main
