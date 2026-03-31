@@ -8,15 +8,24 @@ struct CueLinkApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     private static let menuBarImage: NSImage = {
-        // Try loading from SPM resource bundle
-        if let url = Bundle.module.url(forResource: "menubar_icon@2x", withExtension: "png", subdirectory: "Resources"),
-           let image = NSImage(contentsOf: url) {
-            image.isTemplate = true
-            image.size = NSSize(width: 18, height: 18)
-            return image
+        // Search for the menu bar icon in known locations
+        let searchPaths = [
+            // .app/Contents/Resources/CueLink_CueLink.bundle/Resources/
+            Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/CueLink_CueLink.bundle/Resources/menubar_icon@2x.png"),
+            Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/CueLink_CueLink.bundle/Resources/menubar_icon.png"),
+            // .app/CueLink_CueLink.bundle/Resources/ (legacy)
+            Bundle.main.bundleURL.appendingPathComponent("CueLink_CueLink.bundle/Resources/menubar_icon@2x.png"),
+            Bundle.main.bundleURL.appendingPathComponent("CueLink_CueLink.bundle/Resources/menubar_icon.png"),
+        ]
+        for path in searchPaths {
+            if let image = NSImage(contentsOf: path) {
+                image.isTemplate = true
+                image.size = NSSize(width: 18, height: 18)
+                return image
+            }
         }
-        // Try without subdirectory
-        if let url = Bundle.module.url(forResource: "menubar_icon@2x", withExtension: "png"),
+        // Also try Bundle.module (works during development)
+        if let url = Bundle.module.url(forResource: "menubar_icon@2x", withExtension: "png", subdirectory: "Resources"),
            let image = NSImage(contentsOf: url) {
             image.isTemplate = true
             image.size = NSSize(width: 18, height: 18)
