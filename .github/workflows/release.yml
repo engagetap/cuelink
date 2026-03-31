@@ -70,6 +70,19 @@ jobs:
             iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
           fi
 
+          # Bundle Sparkle.framework
+          SPARKLE_FW="$BIN_PATH/Sparkle.framework"
+          if [ -d "$SPARKLE_FW" ]; then
+            mkdir -p "$APP/Contents/Frameworks"
+            cp -R "$SPARKLE_FW" "$APP/Contents/Frameworks/"
+            install_name_tool -add_rpath @loader_path/../Frameworks "$APP/Contents/MacOS/CueLink" 2>/dev/null || true
+          fi
+
+          # Clean resource forks
+          xattr -cr "$APP" 2>/dev/null || true
+          find "$APP" -name ".DS_Store" -delete 2>/dev/null || true
+          find "$APP" -name "._*" -delete 2>/dev/null || true
+
           codesign --force --deep -s - "$APP"
 
       - name: Create DMG

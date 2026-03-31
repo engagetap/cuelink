@@ -85,6 +85,21 @@ if [ -f "$ICON_SOURCE" ]; then
     echo "  Generated AppIcon.icns"
 fi
 
+# Copy Sparkle.framework
+SPARKLE_FW="$(swift build -c release --show-bin-path)/Sparkle.framework"
+if [ -d "$SPARKLE_FW" ]; then
+    echo "==> Bundling Sparkle.framework..."
+    mkdir -p "$APP_BUNDLE/Contents/Frameworks"
+    cp -R "$SPARKLE_FW" "$APP_BUNDLE/Contents/Frameworks/"
+    # Add rpath so the binary can find Sparkle in Frameworks
+    install_name_tool -add_rpath @loader_path/../Frameworks "$APP_BUNDLE/Contents/MacOS/${APP_NAME}" 2>/dev/null || true
+fi
+
+# Clean resource forks
+xattr -cr "$APP_BUNDLE" 2>/dev/null
+find "$APP_BUNDLE" -name ".DS_Store" -delete 2>/dev/null
+find "$APP_BUNDLE" -name "._*" -delete 2>/dev/null
+
 # Ad-hoc code sign
 echo "==> Code signing (ad-hoc)..."
 codesign --force --deep -s - "$APP_BUNDLE"
