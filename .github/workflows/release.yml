@@ -48,9 +48,10 @@ jobs:
 
           echo -n "APPL????" > "$APP/Contents/PkgInfo"
 
+          # Resource bundle must be at .app root for SPM's Bundle.main to find it
           RESOURCE_BUNDLE="$BIN_PATH/CueLink_CueLink.bundle"
           if [ -d "$RESOURCE_BUNDLE" ]; then
-            cp -R "$RESOURCE_BUNDLE" "$APP/Contents/Resources/"
+            cp -R "$RESOURCE_BUNDLE" "$APP/"
           fi
 
           if [ -d "CueLink/CueLink/Assets.xcassets" ]; then

@@ -39,10 +39,10 @@ cp "$PKG_DIR/CueLink/Info.plist" "$APP_BUNDLE/Contents/"
 /usr/libexec/PlistBuddy -c "Add :NSPrincipalClass string NSApplication" "$APP_BUNDLE/Contents/Info.plist" 2>/dev/null || true
 /usr/libexec/PlistBuddy -c "Add :CFBundleName string ${APP_NAME}" "$APP_BUNDLE/Contents/Info.plist" 2>/dev/null || true
 
-# Copy SPM resource bundle if it exists
+# Copy SPM resource bundle — must be at .app root for Bundle.main to find it
 RESOURCE_BUNDLE="$(swift build -c release --show-bin-path)/CueLink_CueLink.bundle"
 if [ -d "$RESOURCE_BUNDLE" ]; then
-    cp -R "$RESOURCE_BUNDLE" "$APP_BUNDLE/Contents/Resources/"
+    cp -R "$RESOURCE_BUNDLE" "$APP_BUNDLE/"
     echo "  Copied resource bundle"
 fi
 
