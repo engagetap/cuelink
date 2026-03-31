@@ -1,0 +1,95 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: macos-15
+    env:
+      TAG_VERSION: ${{ github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Resolve SPM dependencies
+        run: cd CueLink && swift package resolve
+
+      - name: Run tests
+        run: cd CueLink && swift test
+
+      - name: Build release
+        run: |
+          cd CueLink
+          swift build -c release
+          echo "BIN_PATH=$(swift build -c release --show-bin-path)" >> "$GITHUB_ENV"
+
+      - name: Create .app bundle
+        run: |
+          APP="build/CueLink.app"
+          mkdir -p "$APP/Contents/MacOS"
+          mkdir -p "$APP/Contents/Resources"
+
+          cp "$BIN_PATH/CueLink" "$APP/Contents/MacOS/CueLink"
+
+          cp CueLink/CueLink/Info.plist "$APP/Contents/"
+          VERSION="${TAG_VERSION#v}"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$APP/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" "$APP/Contents/Info.plist"
+
+          echo -n "APPL????" > "$APP/Contents/PkgInfo"
+
+          RESOURCE_BUNDLE="$BIN_PATH/CueLink_CueLink.bundle"
+          if [ -d "$RESOURCE_BUNDLE" ]; then
+            cp -R "$RESOURCE_BUNDLE" "$APP/Contents/Resources/"
+          fi
+
+          if [ -d "CueLink/CueLink/Assets.xcassets" ]; then
+            xcrun actool CueLink/CueLink/Assets.xcassets \
+              --compile "$APP/Contents/Resources" \
+              --platform macosx \
+              --minimum-deployment-target 14.0 \
+              --app-icon AppIcon \
+              --output-partial-info-plist /tmp/actool-info.plist || true
+          fi
+
+          ICON_SOURCE="CueLink/CueLink/Resources/appicon_1024.png"
+          if [ -f "$ICON_SOURCE" ]; then
+            ICONSET="/tmp/CueLink.iconset"
+            mkdir -p "$ICONSET"
+            for pair in "16x16:16" "16x16@2x:32" "32x32:32" "32x32@2x:64" "128x128:128" "128x128@2x:256" "256x256:256" "256x256@2x:512" "512x512:512" "512x512@2x:1024"; do
+              name="${pair%%:*}"
+              size="${pair##*:}"
+              sips -z "$size" "$size" "$ICON_SOURCE" --out "$ICONSET/icon_${name}.png" >/dev/null 2>&1
+            done
+            iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
+          fi
+
+          codesign --force --deep -s - "$APP"
+
+      - name: Create DMG
+        run: |
+          VERSION="${TAG_VERSION#v}"
+          mkdir -p dmg-staging
+          cp -R build/CueLink.app dmg-staging/
+          ln -s /Applications dmg-staging/Applications
+          hdiutil create \
+            -volname "CueLink" \
+            -srcfolder dmg-staging \
+            -ov \
+            -format UDZO \
+            "CueLink-${VERSION}.dmg"
+          echo "DMG_NAME=CueLink-${VERSION}.dmg" >> "$GITHUB_ENV"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.DMG_NAME }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
