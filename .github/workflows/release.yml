@@ -75,14 +75,6 @@ jobs:
             iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
           fi
 
-          # Bundle Sparkle.framework
-          SPARKLE_FW="$BIN_PATH/Sparkle.framework"
-          if [ -d "$SPARKLE_FW" ]; then
-            mkdir -p "$APP/Contents/Frameworks"
-            cp -R "$SPARKLE_FW" "$APP/Contents/Frameworks/"
-            install_name_tool -add_rpath @loader_path/../Frameworks "$APP/Contents/MacOS/CueLink" 2>/dev/null || true
-          fi
-
           # Clean resource forks
           xattr -cr "$APP" 2>/dev/null || true
           find "$APP" -name ".DS_Store" -delete 2>/dev/null || true
@@ -114,41 +106,3 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update appcast.xml
-        run: |
-          VERSION="${TAG_VERSION#v}"
-          PUB_DATE="$(date -u '+%a, %d %b %Y %H:%M:%S +0000')"
-          DMG_URL="https://github.com/engagetap/cuelink/releases/download/${TAG_VERSION}/CueLink-${VERSION}.dmg"
-
-          cat > appcast.xml << XMLEOF
-          <?xml version="1.0" encoding="utf-8"?>
-          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
-              <channel>
-                  <title>CueLink Updates</title>
-                  <link>https://github.com/engagetap/cuelink/releases</link>
-                  <description>Most recent changes with links to updates.</description>
-                  <language>en</language>
-                  <item>
-                      <title>Version ${VERSION}</title>
-                      <sparkle:version>${VERSION}</sparkle:version>
-                      <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
-                      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-                      <pubDate>${PUB_DATE}</pubDate>
-                      <enclosure
-                          url="${DMG_URL}"
-                          length="${DMG_SIZE}"
-                          type="application/octet-stream"
-                      />
-                  </item>
-              </channel>
-          </rss>
-          XMLEOF
-
-          # Remove leading whitespace from heredoc
-          sed -i '' 's/^          //' appcast.xml
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add appcast.xml
-          git commit -m "chore: update appcast.xml for ${TAG_VERSION}"
-          git push origin HEAD:main

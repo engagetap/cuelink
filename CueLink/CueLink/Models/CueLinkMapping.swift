@@ -20,7 +20,7 @@ extension CueLinkMapping {
             "channel": Int(midiChannel),
             "timestamp": formatter.string(from: Date())
         ]
-        return try! JSONSerialization.data(withJSONObject: payload)
+        return (try? JSONSerialization.data(withJSONObject: payload)) ?? Data()
     }
 }
 

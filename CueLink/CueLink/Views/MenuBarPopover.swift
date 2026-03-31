@@ -1,11 +1,10 @@
 import SwiftUI
-import Sparkle
 
 struct MenuBarPopover: View {
     @EnvironmentObject var appState: AppState
     var openSettings: () -> Void
     var openAbout: () -> Void
-    var updaterController: SPUStandardUpdaterController
+    @ObservedObject var updateChecker: UpdateChecker
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -59,10 +58,20 @@ struct MenuBarPopover: View {
                 Label("Settings", systemImage: "gear")
             }
 
-            Button(action: {
-                updaterController.checkForUpdates(nil)
-            }) {
-                Label("Check for Updates...", systemImage: "arrow.triangle.2.circlepath")
+            if updateChecker.updateAvailable, let version = updateChecker.latestVersion {
+                Button(action: {
+                    if let url = updateChecker.downloadURL {
+                        NSWorkspace.shared.open(url)
+                    }
+                }) {
+                    Label("Update Available (v\(version))", systemImage: "arrow.triangle.2.circlepath")
+                }
+            } else {
+                Button(action: {
+                    Task { await updateChecker.checkForUpdates() }
+                }) {
+                    Label("Check for Updates...", systemImage: "arrow.triangle.2.circlepath")
+                }
             }
 
             Button(action: openAbout) {

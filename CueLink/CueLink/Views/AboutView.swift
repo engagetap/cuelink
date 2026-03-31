@@ -25,7 +25,7 @@ struct AboutView: View {
                 .foregroundStyle(.secondary)
 
             Link("GitHub Repository",
-                 destination: URL(string: "https://github.com/dylanlambert/cuelink")!)
+                 destination: URL(string: "https://github.com/engagetap/cuelink")!)
                 .font(.callout)
         }
         .padding(32)

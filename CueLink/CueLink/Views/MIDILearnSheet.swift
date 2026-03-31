@@ -39,7 +39,6 @@ struct MIDILearnSheet: View {
 
             Button("Cancel") {
                 appState.cancelLearning()
-                onDismiss()
             }
             .keyboardShortcut(.cancelAction)
         }

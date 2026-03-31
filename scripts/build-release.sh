@@ -6,7 +6,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PKG_DIR="$PROJECT_ROOT/CueLink"
 BUILD_DIR="$PROJECT_ROOT/build"
 APP_NAME="CueLink"
-VERSION="1.0.0"
+VERSION=$(plutil -extract CFBundleShortVersionString raw "$PKG_DIR/CueLink/Info.plist")
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 APP_BUNDLE="$BUILD_DIR/${APP_NAME}.app"
 
@@ -83,16 +83,6 @@ if [ -f "$ICON_SOURCE" ]; then
     /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile AppIcon" "$APP_BUNDLE/Contents/Info.plist"
     rm -rf "$ICONSET_DIR"
     echo "  Generated AppIcon.icns"
-fi
-
-# Copy Sparkle.framework
-SPARKLE_FW="$(swift build -c release --show-bin-path)/Sparkle.framework"
-if [ -d "$SPARKLE_FW" ]; then
-    echo "==> Bundling Sparkle.framework..."
-    mkdir -p "$APP_BUNDLE/Contents/Frameworks"
-    cp -R "$SPARKLE_FW" "$APP_BUNDLE/Contents/Frameworks/"
-    # Add rpath so the binary can find Sparkle in Frameworks
-    install_name_tool -add_rpath @loader_path/../Frameworks "$APP_BUNDLE/Contents/MacOS/${APP_NAME}" 2>/dev/null || true
 fi
 
 # Clean resource forks

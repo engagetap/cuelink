@@ -31,7 +31,10 @@ struct MappingEditorView: View {
                         LabeledContent("Channel") {
                             TextField("Channel", value: Binding(
                                 get: { mapping.midiChannel + 1 },
-                                set: { mapping.midiChannel = $0 > 0 ? $0 - 1 : 0 }
+                                set: { newVal in
+                                    let clamped = min(max(newVal, 1), 16)
+                                    mapping.midiChannel = UInt8(clamped - 1)
+                                }
                             ), format: .number)
                                 .frame(width: 60)
                         }

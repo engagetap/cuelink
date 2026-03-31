@@ -4,13 +4,11 @@ import PackageDescription
 let package = Package(
     name: "CueLink",
     platforms: [.macOS(.v14)],
-    dependencies: [
-        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.0.0")
-    ],
+    dependencies: [],
     targets: [
         .executableTarget(
             name: "CueLink",
-            dependencies: ["Sparkle"],
+            dependencies: [],
             path: "CueLink",
             exclude: ["Info.plist", "Assets.xcassets"],
             resources: [

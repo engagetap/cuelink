@@ -1,6 +1,5 @@
 import SwiftUI
 import UserNotifications
-import Sparkle
 
 @main
 struct CueLinkApp: App {
@@ -32,7 +31,7 @@ struct CueLinkApp: App {
             MenuBarPopover(
                 openSettings: { openSettingsWindow() },
                 openAbout: { openAboutWindow() },
-                updaterController: appDelegate.updaterController
+                updateChecker: appDelegate.updateChecker
             )
             .environmentObject(appState)
         } label: {
@@ -99,20 +98,12 @@ struct CueLinkApp: App {
 
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
-    let updaterController: SPUStandardUpdaterController
-
-    override init() {
-        self.updaterController = SPUStandardUpdaterController(
-            startingUpdater: true,
-            updaterDelegate: nil,
-            userDriverDelegate: nil
-        )
-        super.init()
-    }
+    let updateChecker = UpdateChecker()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         requestNotificationPermission()
+        Task { await updateChecker.checkForUpdates() }
     }
 
     private func requestNotificationPermission() {
